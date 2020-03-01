@@ -2,7 +2,7 @@
 verrors是Go1.13官方错误包的辅助库, 目的是让error能附带额外数据, 出于这个宗旨, 它的任何方法都双向兼容errors官方库, 如errors.Is, errors.Unwrap和fmt.Errorf("%w")都能正常使用.
 
 verrors的特性有:
-- 辅助库/低入侵: 非强制使用, 兼容errors官方库, 代码改动少
+- 辅助库/低入侵: 非强制使用, 兼容errors官方库
 - 支持给error添加任意Value, 
   现在就不再局限于[`errors.WithMessage()`](https://github.com/pkg/errors/blob/master/errors.go#L217)或者 [`errors.WithStack()`](https://github.com/pkg/errors/blob/master/errors.go#L145)
 - 灵活, 可插拔, 可扩展.
@@ -17,7 +17,7 @@ go get github.com/zbysir/verrors
 ## Getting Started
 
 ### New error
-建议直接使用官方库: 
+你应该直接使用官方库: 
 ```
 err := errors.New("file not found")
 ```
@@ -47,7 +47,7 @@ print(verrors.StdPackErrorsFormatter(verrors.Unpack(err)))
 别急, 这正是由于verrors足够灵活, 在介绍完基本使用方法后我们会解决这些问题.
 
 ### Wrapping
-使用官方库
+同样使用官方库
 ```
 err := errors.New("file not found") 
 err = fmt.Errorf("check health error: %w", err)
@@ -98,8 +98,9 @@ err = fmt.Errorf("check health error: %w", verrors.WithVaule(err, "retry", true)
 实际上`WithCode`也只是WithValue的速记写法.
 
 ## Shorthand (简化写法)
-收集上面提到的问题, 现在我们来一一解答
+**集中精神, 重点来了**, 这里将会说明verrors如何易扩展.
 
+收集上面提到的问题, 现在我们来一一解答
 - 为什么New一个带code码的错误这么复杂? 我想要简单点的写法.
 - 为什么打印错误的代码这么冗长? 我只想`logf("%+v", err)`.
 - 错误链上包含了两个错误, 但我只想要一个包含所有信息的错误应该怎么做?
@@ -118,8 +119,7 @@ fmt.Printf("\n%+v", err)
 - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = go.zhuzi.me/go/errors/verrors.TestErrorfc Z:/golang/go_path/src/go.zhuzi.me/go/errors/verrors/extra_test.go:18 ]
 - file not found
 ```
-
-现在一次性解决了所有问题, 我们来看看Errorfc如何实现, 在`extra.go`中有它的代码:
+这便是verrors的最终形态, 一次性解决了所有问题, **重点来了**, 我们来看看Errorfc如何实现, 在`extra.go`中有它的代码:
 ```
 // Errofc is shorthand for NewFormatError/WithStack/WithCode/fmt.Errorf
 func Errorfc(code int,format string, args ...interface{}) (r error) {
@@ -128,14 +128,16 @@ func Errorfc(code int,format string, args ...interface{}) (r error) {
 ```
 它十分简单.
 
-**其调用的所有方法都是导出的, 并且可以随你组合**, 这就是verrors灵活的原因.
+**其调用的所有方法都是导出的, 并且可以随你组合**, 这就是verrors灵活可扩展的原因.
 
-但Errorfc方法并不能满足你的需求: 你可能不需要code 或者 stack. 所以它存放在`extra.go`文件中, 表示它仅仅是verror的扩展, 你自己也可以实现这部分的扩展.
+但Errorfc方法并不能满足你的需求: 你可能不需要code 或者 stack, 所以它存放在`extra.go`文件中, 表示它仅仅是verror的扩展, 
+实际上所有以`extra`开头的文件都只是verror内置的扩展(或者说是例子), 这意味着所有`extra`中的所有功能(包括WithCode, WithStack)都可以由你自己实现, 
+至于如何使用verror内置的扩展, 随你喜好.
 
-实际上所有以`extra`开头的文件都只是verror的扩展(或者说是例子), 你虽然可以使用它们, 但我还是建议自行实现它们以满足项目中个性化的需求.
+**最简单的使用办法是copy`extra`中的代码到你的项目中, 并修改它们.**
 
-### 打印
-可能需要另起一个段落来说明打印.
+### Print (打印)
+打印也应该是可自定义的, 所以需要另起一个段落来说明它.
 
 verror内置了一个打印扩展: NewFormatError(error) error. 它返回的错误会格式化错误链中所有错误和错误的值(WithValue). 如下
 ```
@@ -228,9 +230,9 @@ func Errorfc(code int, format string, args ...interface{}) (r error) {
 ```
 
 ## Proposal (建议)
-按照你的喜好来组装verrors.
+使用verrors最好的办法是按照你的喜好在项目中组装verrors.
 
-例如在你的项目中使用Code来标识错误并且喜爱使用位置信息, 你可以在项目中写上下面的工具函数
+例如在你的项目中使用Code来标识错误并且喜爱使用位置信息, 你可以在项目中写下面的工具函数.
 ```
 package myerrors
 
@@ -243,6 +245,17 @@ func NewCode(msg string, code int) error {
 func Errorfc(code int, format string, args ...interface{}) (r error) {
 	return verrors.WithStack(verrors.WithCode(verrors.NewToInternalError(fmt.Errorf(format, args...)), code), 2)
 }
+```
+
+使用它
+```
+import "project/myerrors"
+
+uid := 1
+err := mysql.GetUser(uid)
+err = Errorfc(500, "GetUser error:%w, id: %v", err, uid)
+
+log.Printf("%+v", err)
 ```
 
 ## verrors如何工作?
