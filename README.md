@@ -253,7 +253,7 @@ import "project/myerrors"
 
 uid := 1
 err := mysql.GetUser(uid)
-err = Errorfc(500, "GetUser error:%w, id: %v", err, uid)
+err = myerrors.Errorfc(500, "GetUser error:%w, id: %v", err, uid)
 
 log.Printf("%+v", err)
 ```
