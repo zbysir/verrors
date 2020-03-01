@@ -119,16 +119,16 @@ fmt.Printf("\n%+v", err)
 - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = go.zhuzi.me/go/errors/verrors.TestErrorfc Z:/golang/go_path/src/go.zhuzi.me/go/errors/verrors/extra_test.go:18 ]
 - file not found
 ```
-这便是verrors的最终形态, 一次性解决了所有问题, **重点来了**, 我们来看看Errorfc如何实现, 在`extra.go`中有它的代码:
+这便是verrors的最终形态, 一次性解决了所有问题, 我们再来看看Errorfc如何实现, 在`extra.go`中有它的代码:
 ```
-// Errofc is shorthand for NewFormatError/WithStack/WithCode/fmt.Errorf
+// Errorfc is shorthand for NewFormatError/WithStack/WithCode/fmt.Errorf
 func Errorfc(code int,format string, args ...interface{}) (r error) {
 	return WithStack(WithCode(NewToInternalError(fmt.Errorf(format, args...)), code), 2)
 }
 ```
-它十分简单.
+相反的, 它十分简单.
 
-**其调用的所有方法都是导出的, 并且可以随你组合**, 这就是verrors灵活可扩展的原因.
+**其调用的所有方法都是你可以自行实现的, 并且可以随意组合**, 这就是verrors灵活可扩展的原因.
 
 但Errorfc方法并不能满足你的需求: 你可能不需要code 或者 stack, 所以它存放在`extra.go`文件中, 表示它仅仅是verror的扩展, 
 实际上所有以`extra`开头的文件都只是verror内置的扩展(或者说是例子), 这意味着所有`extra`中的所有功能(包括WithCode, WithStack)都可以由你自己实现, 
