@@ -1,20 +1,11 @@
-verrors (valueErrors)
-
-## 特性
-得益于[errors-are-values](https://blog.golang.org/errors-are-values)的价值观, error有太多的玩法, 但官方并没有跟进任何方案, 
-那么其后的变数还很多, 所以我想做的是: 辅助官方, 而不是代替官方.
-
-和xerros与pkg/error等想要替换掉官方errors的包的目的不一样, verrors仅仅是官方库的辅助库, 目的是让error附带额外数据, 
-出于这个宗旨, 它的任何方法都双向兼容errors官方库, 如errors.Is, errors.Unwrap和fmt.Errorf("%w")都能正常使用.
-
-三方库的缺点:
-- 不易扩展, pkg/error提供了WithMessage和WithStack方法, 但如果需要, 如何实现WithCode?
+## What is verrors?
+verrors是Go1.13官方错误包的辅助库, 目的是让error能附带额外数据, 出于这个宗旨, 它的任何方法都双向兼容errors官方库, 如errors.Is, errors.Unwrap和fmt.Errorf("%w")都能正常使用.
 
 verrors的特性有:
 - 辅助库/低入侵: 非强制使用, 兼容errors官方库, 代码改动少
-- 支持附带任意Value, 
-  现在就不再局限于[`errors.WithMessage()`](https://github.com/pkg/errors/blob/master/errors.go#L217), [`errors.WithStack()`](https://github.com/pkg/errors/blob/master/errors.go#L145)
-- 简单
+- 支持给error添加任意Value, 
+  现在就不再局限于[`errors.WithMessage()`](https://github.com/pkg/errors/blob/master/errors.go#L217)或者 [`errors.WithStack()`](https://github.com/pkg/errors/blob/master/errors.go#L145)
+- 灵活, 可插拔, 可扩展.
 
 ## Installation
 
@@ -22,6 +13,7 @@ verrors的特性有:
 go get github.com/zbysir/verrors
 ```
 
+在国内, 推荐使用go mod与proxy: https://goproxy.cn, 使用更畅快.
 ## Getting Started
 
 ### New error
@@ -134,7 +126,7 @@ func Errorfc(code int,format string, args ...interface{}) (r error) {
 	return WithStack(WithCode(NewToInternalError(fmt.Errorf(format, args...)), code), 2)
 }
 ```
-它十分简单, 不信你可以看xerrors.Errorf的源代码.
+它十分简单.
 
 **其调用的所有方法都是导出的, 并且可以随你组合**, 这就是verrors灵活的原因.
 
