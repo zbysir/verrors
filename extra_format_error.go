@@ -12,10 +12,7 @@ type formatInternalError struct {
 
 // 跳过下一层.
 func (e formatInternalError) Unwrap() error {
-	if u, ok := e.err.(Wrapper); ok {
-		return u.Unwrap()
-	}
-	return nil
+	return Unwrap(e.err)
 }
 
 func (e formatInternalError) InternalError() error {
@@ -49,7 +46,7 @@ type PackErrorsFormatter func(e PackErrors) string
 // 你可以覆盖这个值来实现覆盖verrors.Errorf()返回的错误的打印行为.
 var StdPackErrorsFormatter PackErrorsFormatter
 
-func NewFormatError(err error) error {
+func WithFormat(err error) error {
 	return formatInternalError{err}
 }
 

@@ -1,29 +1,49 @@
 package verrors
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 )
 
 func TestUnpack(t *testing.T) {
-	root := errors.New("mysql cannot connect")
-	e := WithCode(root, 500)
-	e = WithCode(e, 300)
+	cases := []struct {
+		name     string
+		err      error
+		packType []string
+	}{
+		{
+			name:     "internal->error->internal->internal->error",
+			err:      WithStack(fmt.Errorf("check health error: %w", WithStack(WithCode(errors.New("file not found"), 400)))),
+			packType: []string{"*verrors.stackInternalError", "*fmt.wrapError", "*errors.errorString"},
+		},
+		{
+			name:     "error->internal->internal->error",
+			err:      fmt.Errorf("check health error: %w", WithStack(WithCode(errors.New("file not found"), 400))),
+			packType: []string{"*fmt.wrapError", "*errors.errorString"},
+		},
+		{
+			name:     "error->error",
+			err:      fmt.Errorf("check health error: %w", errors.New("file not found")),
+			packType: []string{"*fmt.wrapError", "*errors.errorString"},
+		},
+	}
 
-	e = fmt.Errorf("插入错误: %w", WithStack(e))
+	for _, v := range cases {
+		t.Run(v.name, func(t *testing.T) {
+			pack := Unpack(v.err)
 
-	e = fmt.Errorf("请求错误: %w", WithCode(e, 600))
+			pt := make([]string, len(pack))
+			for i, p := range pack {
+				pt[i] = fmt.Sprintf("%T", p.Cause())
+			}
 
-	up := Unpack(e)
-	bs, _ := json.MarshalIndent(up, " ", " ")
-	t.Logf("%s", bs)
-
-	t.Logf("%v, %+v, %s", up, up, up)
-
-	bs, _ = json.MarshalIndent(up.Merge(), " ", " ")
-	t.Logf("Merge: %s", bs)
+			if strings.Join(pt, ",") != strings.Join(v.packType, ",") {
+				t.Fatalf("bad result for unpack, want: %v, but: %+v", strings.Join(v.packType, ","), strings.Join(pt, ","))
+			}
+		})
+	}
 
 	return
 }

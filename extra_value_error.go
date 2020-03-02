@@ -20,10 +20,7 @@ func (e valueInternalError) Set(s Store) {
 }
 
 func (e valueInternalError) Unwrap() error {
-	if u, ok := e.err.(Wrapper); ok {
-		return u.Unwrap()
-	}
-	return nil
+	return Unwrap(e.err)
 }
 
 func (e valueInternalError) InternalError() error {

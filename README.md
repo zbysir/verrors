@@ -79,6 +79,13 @@ err := fmt.Errorf("check health error: %w", verrors.WithCode(verrors.WithStack(r
 
 print(errors.Is(err, root)) // true
 ```
+甚至errors.Unwrap行为也一致
+```
+root := errors.New("file not found") 
+err := NewToInternalError(fmt.Errorf("check health error: %w", WithCode(WithStack(root), 400)))
+
+print(errors.Unwrap(err) == root) // true
+```
 
 不过和上面的问题一样, 这段代码太长了, 再等等, 稍后我们会简化它.
 
@@ -121,7 +128,7 @@ fmt.Printf("\n%+v", err)
 ```
 这便是verrors的最终形态, 一次性解决了所有问题, 我们再来看看Errorfc如何实现, 在`extra.go`中有它的代码:
 ```
-// Errorfc is shorthand for NewFormatError/WithStack/WithCode/fmt.Errorf
+// Errorfc is shorthand for WithStack/WithCode/fmt.Errorf
 func Errorfc(code int,format string, args ...interface{}) (r error) {
 	return WithStack(WithCode(NewToInternalError(fmt.Errorf(format, args...)), code), 2)
 }
@@ -137,9 +144,9 @@ func Errorfc(code int,format string, args ...interface{}) (r error) {
 **最简单的使用办法是copy`extra`中的代码到你的项目中, 并修改它们.**
 
 ### Print (打印)
-打印也应该是可自定义的, 所以需要另起一个段落来说明它.
+如何打印实则和错误无关, 所以我们提供Unpack方法, 它可以将错误链中的信息格式化成为规整的结构体, 方便你自行实现打印.
 
-verror内置了一个打印扩展: NewFormatError(error) error. 它返回的错误会格式化错误链中所有错误和错误的值(WithValue). 如下
+verror内置了一个打印扩展: WithFormat(error) error. 它返回的错误会格式化错误链中所有错误和错误的值(WithValue). 如下
 ```
 - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = go.zhuzi.me/go/errors/verrors.TestErrorfc Z:/golang/go_path/src/go.zhuzi.me/go/errors/verrors/extra_test.go:18 ]
 - file not found
@@ -147,10 +154,10 @@ verror内置了一个打印扩展: NewFormatError(error) error. 它返回的错�
 
 考虑到错误中包含任意Value, 所以就让所有Value都平铺在error信息后面(包括位置信息), 如果你觉得它不够好看, 你可以自定义格式化(format)逻辑:
 
-和NewFormatError实现原理一致, 只需要实现几个方法, 
-- Unwrap() 
-- InternalError() 
-- Error() 
+和verrors中所有的InternalError实现原理一致, 只需要实现几个方法, 
+- Unwrap()
+- InternalError()
+- Error()
 - Format(f fmt.State, c rune)
 ```
 type formatInternalError struct {
@@ -158,10 +165,7 @@ type formatInternalError struct {
 }
 
 func (e formatInternalError) Unwrap() error {
-	if u, ok := e.err.(Wrapper); ok {
-		return u.Unwrap()
-	}
-	return nil
+	return Unwrap(e.err)
 }
 
 func (e formatInternalError) InternalError() error {
@@ -186,9 +190,9 @@ func (e formatInternalError) Format(f fmt.State, c rune) {
 }
 ```
 
-其中`verrors.Unpack(err)` 返回的信息是一个简单的结构体, 它足够简单, 很容易编写格式化代码.
+其中`verrors.Unpack(err)` 返回一个简单的结构体, 它足够整洁简单, 很容易编写格式化代码.
 
-如果懒得写整个formatInternalError结构, 你可以直接编写打印函数来覆盖掉StdPackErrorsFormatter, 下面是一例子
+如果懒得写整个formatInternalError结构, 你还可以直接编写打印函数来覆盖掉默认的格式化函数`StdPackErrorsFormatter`, 下面是一例子
 ```
 verrors.StdPackErrorsFormatter = 
   func (ps PackErrors) string {
@@ -215,22 +219,36 @@ verrors.StdPackErrorsFormatter =
     return s.String()
   }
 ```
-现在formatInternalError格式化的错误信息如下
+现在 格式化的错误信息如下
 ```
 - [400] check health error: file not found >> go.zhuzi.me/go/errors/verrors.TestReadMe Z:/golang/go_path/src/go.zhuzi.me/go/errors/verrors/errors_test.go:109
 - file not found
 ```
+如你所见, code码被放在了前面, 位置信息也更好查看, 你可以根据项目需求调整它.
 
-另外, 过多的NewFormatError(error) error会增加性能消耗, 所以为了WithStack和WithCode返回的错误也能打印出好看的信息, 我们将它们返回的错误也实现了fmt.Formatter接口, 
-如果你想要实现自己的格式化方法, 记得在错误最外层包裹上自己实现了fmt.Formatter的错误, 如下面代码中的`verrors.NewFormatError()`:
+另外, 过多的WithFormat(error)会增加性能消耗, 所以为了WithStack和WithCode返回的错误也能打印出好看的信息, 我们将它们返回的错误也实现了fmt.Formatter接口, 而不是每次都WithFormat.
+
+总结一下, 如果你想要实现自己的格式化方法, 有两种办法
+- 在错误最外层包裹上自己实现了fmt.Formatter的错误, 如下面代码中的`verrors.WithFormat()`:
 ```
 func Errorfc(code int, format string, args ...interface{}) (r error) {
-	return verrors.NewFormatError(verrors.WithStack(verrors.WithCode(verrors.NewToInternalError(fmt.Errorf(format, args...)), code), 2))
+	return verrors.WithFormat(verrors.WithStack(verrors.WithCode(verrors.NewToInternalError(fmt.Errorf(format, args...)), code), 2))
 }
 ```
+- 替换掉verrors.StdPackErrorsFormatter函数.
+
+推荐使用第二个办法.
+
+> 当然, 我们现在提及的全部方法都只是verrors的"扩展", 如果需要, 你也可以全部自行实现他们.
 
 ## Proposal (建议)
-使用verrors最好的办法是按照你的喜好在项目中组装verrors.
+虽然verrors可以开箱即用:
+```
+err := errors.New("file not found") 
+err = fmt.Errorf("check health error: %w", verrors.WithVaule(err, "retry", true))
+```
+但这样的写法太冗长, 不过我们没办法提供简单写法, 因为你需要的错误信息是可定制的. 
+所以使用verrors最好的办法是按照你的喜好在项目中组装verrors.
 
 例如在你的项目中使用Code来标识错误并且喜爱使用位置信息, 你可以在项目中写下面的工具函数.
 ```
@@ -259,11 +277,16 @@ log.Printf("%+v", err)
 ```
 
 ## verrors如何工作?
+刚刚一直在说, 建议用户自行实现某某方法, 全都被用户实现了, 那verrors到底为我们提供了什么?
 
-同样十分简单, 小小的理解下面的接口或者方法:
+实际上verrors只提供了Unpack方法和它的思路, 这部分逻辑我们不希望用户去实现, 而是应该直接使用.
 
-- Interface: InternalError { InternalError() error }
-- Interface: Setter { Set(Store) }
-- Func: Unpack(err) PackErrors
+Unpack会解包一个错误, 和Unwrap不一样的是它可以在错误链中插入内部错误(InternalError)但不影响层级, 自定义层级与数据逻辑通过以下两个接口实现
+- InternalError { InternalError() error }
+- Setter { Set(Store) }
 
-Todo ...
+实现了 InternalError 的错误是一个内部错误, 它不会被放置到错误链中, 而是作为数据存储或者格式化时使用. 
+
+实现了 Setter 的错误 会被当做数据层来实现WithValue.
+
+如果你要自定义一个InternalError, 最好的办法就是参考`extra_stack_error.go`和`extra_value_error.go`.

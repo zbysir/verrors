@@ -21,6 +21,6 @@
 //   - file not found
 // The verrors.Errorfc is a sample function:
 //   func Errorfc(code int,format string, args ...interface{}) (r error) {
-//	   return NewFormatError(WithStack(WithCode(NewToInternalError(fmt.Errorf(format, args...)), code), 2))
+//	   return WithFormat(WithStack(WithCode(ToInternalError(fmt.Errorf(format, args...)), code), 2))
 //   }
 package verrors // import "github.com/zbysir/verrors"

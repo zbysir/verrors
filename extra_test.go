@@ -13,13 +13,13 @@ func TestErrorfc(t *testing.T) {
 	t.Logf("format with v:\n%+v", ev)
 
 	// only has on error in chain:
-	// - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = go.zhuzi.me/go/errors/verrors.TestErrorfc Z:/golang/go_path/src/go.zhuzi.me/go/errors/verrors/extra_test.go:12 ]
+	// - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = github.com/zbysir/verrors.TestErrorfc Z:/go_project/verrors/extra_test.go:12 ]
 
 	ew := Errorfc(400, "do something err: %w, fileName: %s", err, testFileName)
 	t.Logf("format with w:\n%+v", ew)
 
 	// has two error in chain:
-	// - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = go.zhuzi.me/go/errors/verrors.TestErrorfc Z:/golang/go_path/src/go.zhuzi.me/go/errors/verrors/extra_test.go:18 ]
+	// - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = github.com/zbysir/verrors.TestErrorfc Z:/go_project/verrors/extra_test.go:18 ]
 	// - file not found
 }
 

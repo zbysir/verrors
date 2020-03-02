@@ -56,42 +56,63 @@ func Test113(t *testing.T) {
 	t.Logf("%v", e2)
 }
 
-func TestStdUnwrap(t *testing.T) {
-	root := errors.New("mysql cannot connect")
-	err := WithCode(WithStack(root), 500)
+// test in readme.md
+func TestReadMe(t *testing.T) {
+	{
+		// NewError
+		err := WithCode(errors.New("file not found"), 500)
 
-	var unwraped []error
-	for err != nil {
-		unwraped = append(unwraped, err)
-		t.Logf("- %+v", err)
-
-		err = errors.Unwrap(err)
+		err = fmt.Errorf("check health error: %w", err)
+		t.Log(StdPackErrorsFormatter(Unpack(err)))
 	}
 
-	t.Logf("has %v error in the chain", len(unwraped))
+	{
+		// WithCode
+		err := errors.New("file not found")
+		err = fmt.Errorf("check health error: %w", WithCode(err, 400))
+
+		t.Log(StdPackErrorsFormatter(Unpack(err)))
+	}
+
+	{
+		// WithValue
+		err := errors.New("file not found")
+		err = fmt.Errorf("check health error: %w", WithValue(err, "retry", true))
+
+		t.Log(StdPackErrorsFormatter(Unpack(err)))
+	}
+
+	{
+		// formatPackErrors2
+		StdPackErrorsFormatter = formatPackErrors2
+
+		err := errors.New("file not found")
+		err = fmt.Errorf("check health error: %w", WithStack(WithCode(err, 400)))
+
+		t.Logf("\n%+v", WithFormat(err))
+	}
+
+	{
+		// errors.Unwrap()
+		root := errors.New("file not found")
+		err := ToInternalError(fmt.Errorf("check health error: %w", WithCode(WithStack(root), 400)))
+		t.Log(errors.Unwrap(err) == root) // true
+	}
 }
 
-// test for readme.md
-func TestReadMe(t *testing.T) {
-	err := WithCode(errors.New("file not found"), 500)
-
-	err = fmt.Errorf("check health error: %w", err)
-	t.Log(StdPackErrorsFormatter(Unpack(err)))
-
-	err = errors.New("file not found")
-	err = fmt.Errorf("check health error: %w", WithCode(err, 400))
-
-	t.Log(StdPackErrorsFormatter(Unpack(err)))
-
-	err = errors.New("file not found")
-	err = fmt.Errorf("check health error: %w", WithValue(err, "retry", true))
-
-	t.Log(StdPackErrorsFormatter(Unpack(err)))
-
-	StdPackErrorsFormatter = formatPackErrors2
-
-	err = errors.New("file not found")
-	err = fmt.Errorf("check health error: %w", WithStack(WithCode(err, 400)))
-
-	t.Logf("\n%+v", NewFormatError(NewToInternalError(err)))
+func TestStdUnwrap(t *testing.T) {
+	{
+		root := errors.New("file not found")
+		err := WithStack(fmt.Errorf("check health error: %w", root))
+		if errors.Unwrap(err) != root {
+			t.Fatalf("Unwrap error, want root, but %T", errors.Unwrap(err))
+		}
+	}
+	{
+		root := errors.New("file not found")
+		err := WithStack(fmt.Errorf("check health error: %v", WithStack(root)))
+		if errors.Unwrap(err) != nil {
+			t.Fatalf("Unwrap error, want nil, but %T", errors.Unwrap(err))
+		}
+	}
 }

@@ -119,7 +119,25 @@ func UnpackOnce(err error) (next error, packError PackError) {
 	packError.err = err
 
 	var internal []error
-	next, internal = Unwrap(err)
+
+	// 如果err是一个internalError, 则不用unwrap, 而是直接放入internal并继续解析接下来的internalError
+	// 否则就unwrap, 再继续解析接下来的internalError
+	_, isInternal := err.(InternalError)
+	if !isInternal {
+		if w, ok := err.(Wrapper); ok {
+			err = w.Unwrap()
+		} else {
+			err = nil
+		}
+	}
+
+	// 如果自己是InternalError, 则返回的internal包含自己
+	for i, ok := err.(InternalError); ok; i, ok = err.(InternalError) {
+		internal = append(internal, err)
+		err = i.InternalError()
+	}
+
+	next = err
 
 	// 后写的代码(外层的InternalError)覆盖之前
 	for i := len(internal) - 1; i >= 0; i-- {

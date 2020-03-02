@@ -17,10 +17,7 @@ type stackInternalError struct {
 }
 
 func (e stackInternalError) Unwrap() error {
-	if u, ok := e.err.(Wrapper); ok {
-		return u.Unwrap()
-	}
-	return nil
+	return Unwrap(e.err)
 }
 
 func (e stackInternalError) Set(setter Store) {

@@ -47,7 +47,7 @@ func StackDeep(err error) string {
 // 最底层错误
 func Cause(err error) error {
 	for {
-		e, _ := Unwrap(err)
+		e := Unwrap(err)
 		if e != nil {
 			err = e
 		} else {
@@ -58,11 +58,11 @@ func Cause(err error) error {
 	return err
 }
 
-// Errofc is shorthand for NewFormatError/WithStack/WithCode/fmt.Errorf
+// Errofc is shorthand for WithStack/WithCode/fmt.Errorf
 func Errorfc(code int, format string, args ...interface{}) (r error) {
-	return NewFormatError(WithStack(WithCode(NewToInternalError(fmt.Errorf(format, args...)), code), 2))
+	return WithStack(WithCode(ToInternalError(fmt.Errorf(format, args...)), code), 2)
 }
 
 func Errorf(format string, args ...interface{}) error {
-	return NewFormatError(NewToInternalError(fmt.Errorf(format, args...)))
+	return ToInternalError(fmt.Errorf(format, args...))
 }
