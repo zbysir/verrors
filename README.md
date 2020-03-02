@@ -82,7 +82,7 @@ print(errors.Is(err, root)) // true
 甚至errors.Unwrap行为也一致
 ```
 root := errors.New("file not found") 
-err := NewToInternalError(fmt.Errorf("check health error: %w", WithCode(WithStack(root), 400)))
+err := ToInternalError(fmt.Errorf("check health error: %w", WithCode(WithStack(root), 400)))
 
 print(errors.Unwrap(err) == root) // true
 ```
@@ -130,7 +130,7 @@ fmt.Printf("\n%+v", err)
 ```
 // Errorfc is shorthand for WithStack/WithCode/fmt.Errorf
 func Errorfc(code int,format string, args ...interface{}) (r error) {
-	return WithStack(WithCode(NewToInternalError(fmt.Errorf(format, args...)), code), 2)
+	return WithStack(WithCode(ToInternalError(fmt.Errorf(format, args...)), code), 2)
 }
 ```
 相反的, 它十分简单.
@@ -232,7 +232,7 @@ verrors.StdPackErrorsFormatter =
 - 在错误最外层包裹上自己实现了fmt.Formatter的错误, 如下面代码中的`verrors.WithFormat()`:
 ```
 func Errorfc(code int, format string, args ...interface{}) (r error) {
-	return verrors.WithFormat(verrors.WithStack(verrors.WithCode(verrors.NewToInternalError(fmt.Errorf(format, args...)), code), 2))
+	return verrors.WithFormat(verrors.WithStack(verrors.WithCode(verrors.ToInternalError(fmt.Errorf(format, args...)), code), 2))
 }
 ```
 - 替换掉verrors.StdPackErrorsFormatter函数.
@@ -257,11 +257,11 @@ package myerrors
 import "github.com/zbysir/verrors"
 
 func NewCode(msg string, code int) error {
-	return verrors.WithStack(verrors.WithCode(verrors.NewToInternalError(errors.New(msg)), code))
+	return verrors.WithStack(verrors.WithCode(verrors.ToInternalError(errors.New(msg)), code))
 }
 
 func Errorfc(code int, format string, args ...interface{}) (r error) {
-	return verrors.WithStack(verrors.WithCode(verrors.NewToInternalError(fmt.Errorf(format, args...)), code), 2)
+	return verrors.WithStack(verrors.WithCode(verrors.ToInternalError(fmt.Errorf(format, args...)), code), 2)
 }
 ```
 
