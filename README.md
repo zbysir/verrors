@@ -243,7 +243,7 @@ func Errorfc(code int, format string, args ...interface{}) (r error) {
 虽然verrors可以开箱即用:
 ```
 err := errors.New("file not found") 
-err = fmt.Errorf("check health error: %w", verrors.WithVaule(err, "retry", true))
+err = verrors.WithVaule(fmt.Errorf("check health error: %w", err), "retry", true))
 ```
 但这样的写法太冗长, 不过我们没办法提供简单写法, 因为你需要的错误信息是可定制的. 
 所以使用verrors最好的办法是按照你的喜好在项目中组装verrors.
