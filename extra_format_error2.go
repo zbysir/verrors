@@ -41,7 +41,7 @@ func (e formatInternalError2) Format(f fmt.State, c rune) {
 }
 
 func NewFormatError2(err error) error {
-	return formatInternalError2{err}
+	return &formatInternalError2{err}
 }
 
 // formatPackErrors2 返回的文本 包括错误消息 / code / stack

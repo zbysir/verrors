@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestErrorfc(t *testing.T) {
+func TestErrorf(t *testing.T) {
 	err := errors.New("file not found")
 	testFileName := "/usr/xx.txt"
 
@@ -21,12 +21,17 @@ func TestErrorfc(t *testing.T) {
 	// has two error in chain:
 	// - do something err: file not found, fileName: /usr/xx.txt [ code = 400; stack = github.com/zbysir/verrors.TestErrorfc Z:/go_project/verrors/extra_test.go:18 ]
 	// - file not found
-}
 
-func TestErrorf(t *testing.T) {
-	err := errors.New("file not found")
+	{
+		err := errors.New("file not found")
 
-	e := Errorf("do something err: %w", err)
+		err = Errorfc(500, "check health error: %w", err)
+		err = Errorf("doSomeThingAService err: %w", err)
 
-	t.Logf("\n%+v", e)
+		t.Logf("Errorfc & Errorf:\n%+v", err)
+
+		// - doSomeThingAService err: check health error: file not found [ stack = github.com/zbysir/verrors.TestErrorfc Z:/go_project/verrors/extra_test.go:29 ]
+		// - check health error: file not found [ code = 500; stack = github.com/zbysir/verrors.TestErrorfc Z:/go_project/verrors/extra_test.go:28 ]
+		// - file not found
+	}
 }

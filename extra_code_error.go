@@ -8,5 +8,5 @@ func WithCode(err error, code int) error {
 }
 
 func NewCode(msg string, code int) error {
-	return WithCode(ToInternalError(errors.New(msg)), code)
+	return WithCode(errors.New(msg), code)
 }

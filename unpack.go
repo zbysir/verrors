@@ -104,9 +104,10 @@ func (u PackErrors) Merge() (err PackError) {
 
 // Unpack会连续Unwrap, 返回错误数组
 func Unpack(err error) (es PackErrors) {
-	for err != nil {
+	next := err
+	for next != nil {
 		var p PackError
-		err, p = UnpackOnce(err)
+		next, p = UnpackOnce(next)
 		es = append(es, p)
 	}
 
@@ -115,36 +116,36 @@ func Unpack(err error) (es PackErrors) {
 
 // 只解包一层
 // unpackOnce会将解析err下的所有internalError, 并将internalError的数据放入packError
+// next可能是真正错误, 也可能是internalError
+// packError.err 一定是真正的错误
 func UnpackOnce(err error) (next error, packError PackError) {
-	packError.err = err
-
 	var internal []error
-
-	// 如果err是一个internalError, 则不用unwrap, 而是直接放入internal并继续解析接下来的internalError
-	// 否则就unwrap, 再继续解析接下来的internalError
-	_, isInternal := err.(InternalError)
-	if !isInternal {
-		if w, ok := err.(Wrapper); ok {
-			err = w.Unwrap()
-		} else {
-			err = nil
+	// 跳过internalError
+	if _, isInternal := err.(InternalError); isInternal {
+		// 如果自己是InternalError, 则返回的internal包含自己
+		for i, ok := err.(InternalError); ok; i, ok = err.(InternalError) {
+			internal = append(internal, err)
+			err = i.InternalError()
 		}
 	}
 
-	// 如果自己是InternalError, 则返回的internal包含自己
-	for i, ok := err.(InternalError); ok; i, ok = err.(InternalError) {
-		internal = append(internal, err)
-		err = i.InternalError()
-	}
+	// 跳过internalError之后的错误一定是真正错误
+	packError.err = err
 
-	next = err
-
+	// Set
 	// 后写的代码(外层的InternalError)覆盖之前
 	for i := len(internal) - 1; i >= 0; i-- {
 		v := internal[i]
 		if s, ok := v.(Setter); ok {
 			s.Set(&packError)
 		}
+	}
+
+	// 将真正错误Unwrap
+	if w, ok := err.(Wrapper); ok {
+		next = w.Unwrap()
+	} else {
+		next = nil
 	}
 	return
 }

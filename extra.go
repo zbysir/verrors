@@ -60,9 +60,9 @@ func Cause(err error) error {
 
 // Errofc is shorthand for WithStack/WithCode/fmt.Errorf
 func Errorfc(code int, format string, args ...interface{}) (r error) {
-	return WithStack(WithCode(ToInternalError(fmt.Errorf(format, args...)), code), 2)
+	return WithStack(WithCode(fmt.Errorf(format, args...), code), 2)
 }
 
 func Errorf(format string, args ...interface{}) error {
-	return ToInternalError(fmt.Errorf(format, args...))
+	return WithStack(fmt.Errorf(format, args...), 2)
 }

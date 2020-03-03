@@ -55,5 +55,8 @@ func WithValue(err error, keyValPairs ...interface{}) error {
 		v.values = append(v.values, keyValPairs[i+1])
 	}
 
-	return v
+	// 记住, 一定需要返回指针
+	// 如果不返回指针, 在编译时并不会有错误, 但由于valueInternalError结构体包含切片无法比较,
+	//   所以当比较(==)WithValue返回的error值的时候会panic, 而指针不会有这样的问题
+	return &v
 }

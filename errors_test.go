@@ -8,12 +8,12 @@ import (
 
 func TestVerrors(t *testing.T) {
 	root := errors.New("mysql cannot connect")
-	err := WithCode(root, 500)
+	err := WithStack(WithCode(root, 500))
 	err = WithCode(err, 300) // the late code 300 will override 500
 
-	err = fmt.Errorf("插入错误: %w", WithStack(WithStack(WithStack(err))))
+	err = WithStack(fmt.Errorf("插入错误: %w", err))
 
-	err = fmt.Errorf("请求错误: %w", WithCode(err, 600))
+	err = WithCode(fmt.Errorf("请求错误: %w", err), 600)
 
 	fe := formatInternalError{err}
 
@@ -62,14 +62,20 @@ func TestReadMe(t *testing.T) {
 		// NewError
 		err := WithCode(errors.New("file not found"), 500)
 
-		err = fmt.Errorf("check health error: %w", err)
+		t.Log(StdPackErrorsFormatter(Unpack(err)))
+	}
+	{
+		// Wrap
+		err := errors.New("file not found")
+
+		err = WithStack(WithCode(fmt.Errorf("check health error: %w", err), 500))
 		t.Log(StdPackErrorsFormatter(Unpack(err)))
 	}
 
 	{
 		// WithCode
 		err := errors.New("file not found")
-		err = fmt.Errorf("check health error: %w", WithCode(err, 400))
+		err = WithCode(fmt.Errorf("check health error: %w", err), 400)
 
 		t.Log(StdPackErrorsFormatter(Unpack(err)))
 	}
@@ -77,7 +83,7 @@ func TestReadMe(t *testing.T) {
 	{
 		// WithValue
 		err := errors.New("file not found")
-		err = fmt.Errorf("check health error: %w", WithValue(err, "retry", true))
+		err = WithValue(fmt.Errorf("check health error: %w", err), "retry", true)
 
 		t.Log(StdPackErrorsFormatter(Unpack(err)))
 	}
@@ -86,16 +92,22 @@ func TestReadMe(t *testing.T) {
 		// formatPackErrors2
 		StdPackErrorsFormatter = formatPackErrors2
 
-		err := errors.New("file not found")
-		err = fmt.Errorf("check health error: %w", WithStack(WithCode(err, 400)))
+		err := WithStack(errors.New("file not found"))
+		err = WithCode(fmt.Errorf("check health error: %w", err), 400)
 
 		t.Logf("\n%+v", WithFormat(err))
+	}
+	{
+		// errors.Is
+		root := WithCode(errors.New("file not found"), 400)
+		err := WithStack(fmt.Errorf("check health error: %w", root))
+		t.Log(errors.Is(err, root)) // true
 	}
 
 	{
 		// errors.Unwrap()
-		root := errors.New("file not found")
-		err := ToInternalError(fmt.Errorf("check health error: %w", WithCode(WithStack(root), 400)))
+		root := WithCode(WithStack(errors.New("file not found")), 400)
+		err := WithStack(fmt.Errorf("check health error: %w", root))
 		t.Log(errors.Unwrap(err) == root) // true
 	}
 }

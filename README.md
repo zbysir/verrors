@@ -1,12 +1,3 @@
-此包还需要解决的问题:
-- 过多的Wrap造成的性能消耗
-- error本身应该是简单的, 引入稍显复杂的verrors是否本末倒置? 是否需要将verrors做得傻瓜化一些?
-- 兼容官方库是否有意义? 有什么场景会同时使用两个库(即verrors和官方errors)?
-
-**在上面的问题还没处理完之前, 请勿使用本库**
-
-下面是我对verrors的展望, 如果你也有和我相同的想法 欢迎尝鲜和讨论.
-
 ## What is verrors?
 verrors是Go1.13官方错误包的辅助库, 目的是让error能附带额外数据, 出于这个宗旨, 它的任何方法都双向兼容errors官方库, 如errors.Is, errors.Unwrap和fmt.Errorf("%w")都能正常使用.
 
@@ -16,6 +7,7 @@ verrors的特性有:
   现在就不再局限于[`errors.WithMessage()`](https://github.com/pkg/errors/blob/master/errors.go#L217)或者 [`errors.WithStack()`](https://github.com/pkg/errors/blob/master/errors.go#L145)
 - 灵活, 可插拔, 可扩展.
 
+欢迎尝鲜和讨论.
 ## Installation
 
 ```
@@ -42,16 +34,14 @@ err = verrors.WithStack(verrors.WithCode(errors.New("file not found"), 500))
 print(verrors.StdPackErrorsFormatter(verrors.Unpack(err)))
 ```
 
-你会看到两行信息, 和xerror类似, 信息包含了错误链上所有的错误.
+和xerror类似, 信息包含了错误链上所有的错误, 由于错误链上只有一个错误, 所以你会看到一行信息:
 ```
 - file not found [ code = 500; stack = TestX Z:/go/errors/verrors/errors_test.go:100 ]
-- file not found
 ```
 
 你看到代码可能会困扰:
 - 为什么New一个带code码的错误这么复杂? 我想要简单点的写法.
 - 为什么打印错误的代码这么冗长? 我只想`logf("%+v", err)`.
-- 错误链上包含了两个错误, 但我只想要一个包含所有信息的错误应该怎么做?
 
 别急, 这正是由于verrors足够灵活, 在介绍完基本使用方法后我们会解决这些问题.
 
@@ -68,30 +58,29 @@ err = fmt.Errorf("check health error: %w", err)
 - file not found
 ```
 
-emmm, 这好像没用上verrors呀, 现在我们就添加上.
-
+emmm, 这好像没用上verrors呀, 现在我们就添加上, 和上面New Error一样, 需要给官方错误包裹上信息:
 ```
 err := errors.New("file not found") 
-err = fmt.Errorf("check health error: %w", verrors.WithCode(verrors.WithStack(err), 400))
+err = WithStack(WithCode(fmt.Errorf("check health error: %w", err), 500))
 ```
 打印
 ```
-- check health error: file not found [ code = 400; stack = go.zhuzi.me/go/errors/verrors.TestReadMe Z:/golang/go_path/src/go.zhuzi.me/go/errors/verrors/errors_test.go:107 ]
+- check health error: file not found [ code = 500; stack = github.com/zbysir/verrors.TestReadMe Z:/go_project/verrors/errors_test.go:71 ]
 - file not found
 ```
 和官方代码对比, 这段代码仅仅添加verrors.WithCode和verrors.WithStack让错误信息丰富了许多.
 
 那么官方的errors.Is还能使用吗? 答案是肯定的.
 ```
-root := errors.New("file not found") 
-err := fmt.Errorf("check health error: %w", verrors.WithCode(verrors.WithStack(root), 400))
+root := WithCode(errors.New("file not found"), 400)
+err := WithStack(fmt.Errorf("check health error: %w", root))
 
 print(errors.Is(err, root)) // true
 ```
-甚至errors.Unwrap行为也一致
+errors.Unwrap行为也一致
 ```
-root := errors.New("file not found") 
-err := ToInternalError(fmt.Errorf("check health error: %w", WithCode(WithStack(root), 400)))
+root := WithCode(WithStack(errors.New("file not found")), 400)
+err := WithStack(fmt.Errorf("check health error: %w", root))
 
 print(errors.Unwrap(err) == root) // true
 ```
@@ -139,18 +128,18 @@ fmt.Printf("\n%+v", err)
 ```
 // Errorfc is shorthand for WithStack/WithCode/fmt.Errorf
 func Errorfc(code int,format string, args ...interface{}) (r error) {
-	return WithStack(WithCode(ToInternalError(fmt.Errorf(format, args...)), code), 2)
+	return WithStack(WithCode(fmt.Errorf(format, args...), code), 2)
 }
 ```
 相反的, 它十分简单.
 
-**其调用的所有方法都是你可以自行实现的, 并且可以随意组合**, 这就是verrors灵活可扩展的原因.
+**其调用的所有方法都是你可以自行实现的, 并且可以随意组合**(如你不想要stack, 删除掉WithStack即可), 这就是verrors灵活可扩展的原因.
 
-但Errorfc方法并不能满足你的需求: 你可能不需要code 或者 stack, 所以它存放在`extra.go`文件中, 表示它仅仅是verror的扩展, 
+也许Errorfc方法并不能满足你的需求: 你可能不需要code 或者 stack, 所以它存放在`extra.go`文件中, 表示它仅仅是verror的扩展, 
 实际上所有以`extra`开头的文件都只是verror内置的扩展(或者说是例子), 这意味着所有`extra`中的所有功能(包括WithCode, WithStack)都可以由你自己实现, 
 至于如何使用verror内置的扩展, 随你喜好.
 
-**最简单的使用办法是copy`extra`中的代码到你的项目中, 并修改它们.**
+**如果你要自行实现WithXXX, 最简单的使用办法是copy`extra`中的代码到你的项目中, 并修改它们.**
 
 ### Print (打印)
 如何打印实则和错误无关, 所以我们提供Unpack方法, 它可以将错误链中的信息格式化成为规整的结构体, 方便你自行实现打印.
@@ -241,7 +230,7 @@ verrors.StdPackErrorsFormatter =
 - 在错误最外层包裹上自己实现了fmt.Formatter的错误, 如下面代码中的`verrors.WithFormat()`:
 ```
 func Errorfc(code int, format string, args ...interface{}) (r error) {
-	return verrors.WithFormat(verrors.WithStack(verrors.WithCode(verrors.ToInternalError(fmt.Errorf(format, args...)), code), 2))
+	return verrors.WithFormat(verrors.WithStack(verrors.WithCode(fmt.Errorf(format, args...), code), 2))
 }
 ```
 - 替换掉verrors.StdPackErrorsFormatter函数.
@@ -266,11 +255,11 @@ package myerrors
 import "github.com/zbysir/verrors"
 
 func NewCode(msg string, code int) error {
-	return verrors.WithStack(verrors.WithCode(verrors.ToInternalError(errors.New(msg)), code))
+	return verrors.WithStack(verrors.WithCode(errors.New(msg), code))
 }
 
 func Errorfc(code int, format string, args ...interface{}) (r error) {
-	return verrors.WithStack(verrors.WithCode(verrors.ToInternalError(fmt.Errorf(format, args...)), code), 2)
+	return verrors.WithStack(verrors.WithCode(fmt.Errorf(format, args...), code), 2)
 }
 ```
 
@@ -285,7 +274,7 @@ err = myerrors.Errorfc(500, "GetUser error:%w, id: %v", err, uid)
 log.Printf("%+v", err)
 ```
 
-## verrors如何工作?
+## How verrors work?
 刚刚一直在说, 建议用户自行实现某某方法, 全都被用户实现了, 那verrors到底为我们提供了什么?
 
 实际上verrors只提供了Unpack方法和它的思路, 这部分逻辑我们不希望用户去实现, 而是应该直接使用.
@@ -299,3 +288,11 @@ Unpack会解包一个错误, 和Unwrap不一样的是它可以在错误链中插
 实现了 Setter 的错误 会被当做数据层来实现WithValue.
 
 如果你要自定义一个InternalError, 最好的办法就是参考`extra_stack_error.go`和`extra_value_error.go`.
+
+## Obscure
+此包还需要解决的问题:
+- 过多的Wrap造成的性能消耗
+- error本身应该是简单的, 引入自定义的(稍显复杂的)verrors是否本末倒置? 是否需要将verrors做得傻瓜化一些?
+- 兼容官方库是否有意义? 有什么场景会同时使用两个库(即verrors和官方errors)?
+
+作者也在思考上面的问题, 慢慢改进吧.

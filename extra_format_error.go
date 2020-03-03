@@ -47,7 +47,7 @@ type PackErrorsFormatter func(e PackErrors) string
 var StdPackErrorsFormatter PackErrorsFormatter
 
 func WithFormat(err error) error {
-	return formatInternalError{err}
+	return &formatInternalError{err}
 }
 
 func init() {
