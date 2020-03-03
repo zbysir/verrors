@@ -1,3 +1,12 @@
+此包还需要解决的问题:
+- 过多的Wrap造成的性能消耗
+- error本身应该是简单的, 引入稍显复杂的verrors是否本末倒置? 是否需要将verrors做得傻瓜化一些?
+- 兼容官方库是否有意义? 有什么场景会同时使用两个库(即verrors和官方errors)?
+
+**在上面的问题还没处理完之前, 请勿使用本库**
+
+下面是我对verrors的展望, 如果你也有和我相同的想法 欢迎讨论.
+
 ## What is verrors?
 verrors是Go1.13官方错误包的辅助库, 目的是让error能附带额外数据, 出于这个宗旨, 它的任何方法都双向兼容errors官方库, 如errors.Is, errors.Unwrap和fmt.Errorf("%w")都能正常使用.
 
