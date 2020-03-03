@@ -5,7 +5,7 @@
 
 **在上面的问题还没处理完之前, 请勿使用本库**
 
-下面是我对verrors的展望, 如果你也有和我相同的想法 欢迎讨论.
+下面是我对verrors的展望, 如果你也有和我相同的想法 欢迎尝鲜和讨论.
 
 ## What is verrors?
 verrors是Go1.13官方错误包的辅助库, 目的是让error能附带额外数据, 出于这个宗旨, 它的任何方法都双向兼容errors官方库, 如errors.Is, errors.Unwrap和fmt.Errorf("%w")都能正常使用.
