@@ -5,7 +5,7 @@ verrors的特性有:
 - 辅助库/低入侵: 非强制使用, 兼容errors官方库
 - 支持给error添加任意Value, 
   现在就不再局限于[`errors.WithMessage()`](https://github.com/pkg/errors/blob/master/errors.go#L217)或者 [`errors.WithStack()`](https://github.com/pkg/errors/blob/master/errors.go#L145)
-- 灵活, 可插拔, 可扩展.
+- 多个Wrap能够透明的组合使用, 可插拔, 可扩展.
 
 欢迎尝鲜和讨论.
 ## Installation
@@ -84,11 +84,15 @@ err := WithStack(fmt.Errorf("check health error: %w", root))
 
 print(errors.Unwrap(err) == root) // true
 ```
+这是由于verrors实现了WithValue的透明化.
+
 
 不过和上面的问题一样, 这段代码太长了, 再等等, 稍后我们会简化它.
 
 ### WithValue
 你可能需要为错误添加更多的信息, 如code, stack, need-retry, 这十分简单:
+
+> https://banzaicloud.com/blog/error-handling-go/ 中也提到如何为错误添加content, WithValue做的事情和它类似, 只不过WithValue支持多个值.
 
 ```
 err := errors.New("file not found") 
@@ -101,6 +105,8 @@ err = fmt.Errorf("check health error: %w", verrors.WithVaule(err, "retry", true)
 ```
 
 实际上`WithCode`也只是WithValue的速记写法.
+
+值得注意的是, 如果你喜欢, 你可以使用任意层数的WithValue, 向这样: WithCode(WithCode(err, 300), 400), 正如上面所说WithValue对于官方的`errors.Is`或`errors.As`是透明的, 所以你不必担心这会影响到它们的执行逻辑.
 
 ## Shorthand (简化写法)
 **集中精神, 重点来了**, 这里将会说明打开verrors的正确方式.
@@ -279,7 +285,7 @@ Unpack会解包一个错误, 和Unwrap不一样的是它可以在错误链中插
 
 ## Obscure
 此包还需要解决的问题:
-- 过多的Wrap造成的性能消耗
+- 是否需要支持透明Wrap? 实际上verrors大部分逻辑就是处理透明Wrap, 但实际使用中可以使用办法实现让一个error附带多个值, 并且过多的Wrap会造成的性能消耗
 - error本身应该是简单的, 引入自定义的(稍显复杂的)verrors是否本末倒置? 是否需要将verrors做得傻瓜化一些?
 - 兼容官方库是否有意义? 有什么场景会同时使用两个库(即verrors和官方errors)?
 
