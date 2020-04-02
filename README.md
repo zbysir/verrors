@@ -106,7 +106,7 @@ err = fmt.Errorf("check health error: %w", verrors.WithVaule(err, "retry", true)
 
 实际上`WithCode`也只是WithValue的速记写法.
 
-值得注意的是, 如果你喜欢, 你可以使用任意层数的WithValue, 向这样: WithCode(WithCode(err, 300), 400), 正如上面所说WithValue对于官方的`errors.Is`或`errors.As`是透明的, 所以你不必担心这会影响到它们的执行逻辑.
+**值得注意的是, 如果你喜欢, 你可以使用任意层数的WithValue, 像这样: WithCode(WithCode(WithStack(err), 300), 400), 正如上面所说 WithValue对于官方的`errors.Is`或`errors.As`是透明的, 所以你不必担心这会影响到它们的执行逻辑.**
 
 ## Shorthand (简化写法)
 **集中精神, 重点来了**, 这里将会说明打开verrors的正确方式.
